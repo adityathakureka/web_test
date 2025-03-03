@@ -22,7 +22,7 @@ pipeline {
         stage('Run Tests') {
     steps {
         script {
-            def testStatus = sh(script: 'npm test --passWithNoTests || true', returnStatus: true)
+            def testStatus = bat(script: 'npm test --passWithNoTests || exit /b 0', returnStatus: true)
             if (testStatus != 0) {
                 echo "Tests failed, but continuing pipeline..."
             }
