@@ -9,7 +9,7 @@ function App() {
         <p className="text-center">
           This is a React File made with the help of Bootstrap.
         </p>
-        <img src={ekaMobilityIcon} alt="Icon" />
+        <img src={ekaMobilityIcon} alt="Icon" style={{width: "100%" }} />
       </div>
     </div>
   );
