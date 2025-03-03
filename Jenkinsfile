@@ -20,15 +20,15 @@ pipeline {
         }
 
         stage('Run Tests') {
-    steps {
-        script {
-            def testStatus = bat(script: 'npm test --passWithNoTests || exit /b 0', returnStatus: true)
-            if (testStatus != 0) {
-                echo "Tests failed, but continuing pipeline..."
+            steps {
+                script {
+                    def testStatus = bat(script: 'npm test --passWithNoTests || cmd /c exit 0', returnStatus: true)
+                    if (testStatus != 0) {
+                        echo "Tests failed, but continuing pipeline..."
+                    }
+                }
             }
         }
-    }
-}
 
         stage('Build Website') {
             steps {
@@ -37,20 +37,21 @@ pipeline {
         }
 
         stage('Deploy Website') {
-    steps {
-        script {
-            def deployOption = "local" // Change to "server" or "artifact" as needed
+            steps {
+                script {
+                    def deployOption = "local" // Change to "server" or "artifact" as needed
 
-            if (deployOption == "server") {
-                bat 'pscp -r ./build user@yourserver:/var/www/html/' // Replace with actual server details & ensure pscp is installed
-            } else if (deployOption == "artifact") {
-                archiveArtifacts artifacts: 'build/**/*', fingerprint: true
-            } else {
-                bat 'npx serve -s build -l 3000' // Serve locally
+                    if (deployOption == "server") {
+                        bat '"C:\\Program Files\\PuTTY\\pscp" -r ./build user@yourserver:/var/www/html/' // Ensure correct path
+                    } else if (deployOption == "artifact") {
+                        archiveArtifacts artifacts: 'build/**/*', fingerprint: true
+                    } else {
+                        bat 'npx serve -s build -l 3000' // Serve locally
+                    }
+                }
             }
         }
     }
-}
 
     post {
         success {
