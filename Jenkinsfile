@@ -46,7 +46,7 @@ pipeline {
                     } else if (deployOption == "artifact") {
                         archiveArtifacts artifacts: 'build/**/*', fingerprint: true
                     } else {
-                        bat 'start /B npx serve -s build -l 3000' // Serve locally in the background
+                        bat 'npx serve -s build -l 3000' // Serve locally
                     }
                 }
             }
