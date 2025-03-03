@@ -37,21 +37,20 @@ pipeline {
         }
 
         stage('Deploy Website') {
-            steps {
-                script {
-                    def deployOption = "local" // Change to "server" or "artifact" as needed
+    steps {
+        script {
+            def deployOption = "local" // Change to "server" or "artifact" as needed
 
-                    if (deployOption == "server") {
-                        sh 'scp -r ./build user@yourserver:/var/www/html/' // Replace with actual server details
-                    } else if (deployOption == "artifact") {
-                        archiveArtifacts artifacts: 'build/**/*', fingerprint: true
-                    } else {
-                        sh 'npx serve -s build -l 3000' // Serve locally
-                    }
-                }
+            if (deployOption == "server") {
+                bat 'pscp -r ./build user@yourserver:/var/www/html/' // Replace with actual server details & ensure pscp is installed
+            } else if (deployOption == "artifact") {
+                archiveArtifacts artifacts: 'build/**/*', fingerprint: true
+            } else {
+                bat 'npx serve -s build -l 3000' // Serve locally
             }
         }
     }
+}
 
     post {
         success {
