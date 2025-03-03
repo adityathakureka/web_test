@@ -21,7 +21,7 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                bat 'npm test' // Adjust if needed
+                 bat 'npm test --passWithNoTests' // Allow pipeline to continue even if no tests exist
             }
         }
 
