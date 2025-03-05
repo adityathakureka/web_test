@@ -14,8 +14,8 @@ pipeline {
                 script {
                     echo 'Cloning React app from GitHub...'
                     bat """
-                    rmdir /s /q "%REPO_DIR%" || echo 'No existing repo to delete'
-                    git clone -b main %GIT_REPO% "%REPO_DIR%"
+                    IF EXIST "%REPO_DIR%" (rmdir /s /q "%REPO_DIR%") ELSE (echo 'No existing repo to delete')
+                    "C:\\Users\\1000684\\AppData\\Local\\Programs\\Git\\cmd\\git.exe" clone -b main "%GIT_REPO%" "%REPO_DIR%"
                     """
                 }
             }
@@ -26,8 +26,8 @@ pipeline {
                 script {
                     echo 'Installing dependencies...'
                     bat """
-                    cd "%REPO_DIR%"
-                    npm install
+                    cd /d "%REPO_DIR%"
+                    call npm install
                     """
                 }
             }
@@ -38,8 +38,8 @@ pipeline {
                 script {
                     echo 'Building React app...'
                     bat """
-                    cd "%REPO_DIR%"
-                    npm run build
+                    cd /d "%REPO_DIR%"
+                    call npm run build
                     """
                 }
             }
@@ -50,8 +50,8 @@ pipeline {
                 script {
                     echo 'Deploying to EC2...'
                     bat """
-                    scp -i "%SSH_KEY%" -r "%REPO_DIR%\\build\\*" ec2-user@%EC2_IP%:/usr/share/nginx/html
-                    ssh -i "%SSH_KEY%" ec2-user@%EC2_IP% "sudo systemctl restart nginx"
+                    cmd /c scp -i "%SSH_KEY%" -r "%REPO_DIR%\\build\\*" ec2-user@%EC2_IP%:/usr/share/nginx/html
+                    cmd /c ssh -i "%SSH_KEY%" ec2-user@%EC2_IP% "sudo systemctl restart nginx"
                     """
                 }
             }
