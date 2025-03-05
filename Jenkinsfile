@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     environment {
-        EC2_IP = '13.235.87.19'  // Replace with your EC2 Public IP
+        EC2_IP = '65.0.122.131'  // Replace with your EC2 Public IP
         SSH_KEY = 'C:\\Users\\1000684\\Downloads\\testing_key.pem' // Use full Windows path
         GIT_REPO = 'https://github.com/adityathakureka/web_test.git'
         REPO_DIR = 'C:\\Jenkins\\workspace\\web_test'
