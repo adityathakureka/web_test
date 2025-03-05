@@ -2,52 +2,58 @@ pipeline {
     agent any
 
     environment {
-        NODE_HOME = 'C:\\Program Files\\nodejs' // Update based on `where node`
-        PATH = "${NODE_HOME};${env.PATH}"
+        GIT_REPO = 'https://github.com/adityathakureka/web_test.git' // Your GitHub repo
+        BRANCH = 'main' // Change if using a different branch
+        EC2_IP = '13.235.87.19'  // Replace with your EC2 Public IP
+        SSH_KEY = 'C:\\Users\\1000684\\Downloads\\testing_key.pem' // Full Windows path to your SSH key
+        REACT_APP_DIR = 'C:\\Jenkins\\workspace\\web_test' // Jenkins workspace directory
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/adityathakureka/web_test.git' // Replace with your repo
+                script {
+                    echo 'Cloning React app from GitHub...'
+                    bat """
+                    rmdir /s /q "$REACT_APP_DIR" || echo 'No existing repo to delete'
+                    git clone -b $BRANCH $GIT_REPO "$REACT_APP_DIR"
+                    """
+                }
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                bat 'npm install'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
                 script {
-                    def testStatus = bat(script: 'npm test --passWithNoTests || cmd /c exit 0', returnStatus: true)
-                    if (testStatus != 0) {
-                        echo "Tests failed, but continuing pipeline..."
-                    }
+                    echo 'Installing npm dependencies...'
+                    bat """
+                    cd "$REACT_APP_DIR"
+                    npm install
+                    """
                 }
             }
         }
 
-        stage('Build Website') {
+        stage('Build React App') {
             steps {
-                bat 'npm run build'
+                script {
+                    echo 'Building React App...'
+                    bat """
+                    cd "$REACT_APP_DIR"
+                    npm run build
+                    """
+                }
             }
         }
 
-        stage('Deploy Website') {
+        stage('Deploy to EC2') {
             steps {
                 script {
-                    def deployOption = "local" // Change to "server" or "artifact" as needed
-
-                    if (deployOption == "server") {
-                        bat '"C:\\Program Files\\PuTTY\\pscp" -r ./build user@yourserver:/var/www/html/' // Ensure correct path
-                    } else if (deployOption == "artifact") {
-                        archiveArtifacts artifacts: 'build/**/*', fingerprint: true
-                    } else {
-                        bat 'npx serve -s build -l 3000' // Serve locally
-                    }
+                    echo 'Deploying build to EC2...'
+                    bat """
+                    scp -i "$SSH_KEY" -r "$REACT_APP_DIR\\build\\*" ec2-user@$EC2_IP:/usr/share/nginx/html
+                    ssh -i "$SSH_KEY" ec2-user@$EC2_IP "sudo systemctl restart nginx"
+                    """
                 }
             }
         }
@@ -55,10 +61,10 @@ pipeline {
 
     post {
         success {
-            echo "Deployment Successful!"
+            echo '✅ Deployment successful! Your React app is live on EC2.'
         }
         failure {
-            echo "Deployment Failed!"
+            echo '❌ Deployment failed! Check logs for errors.'
         }
     }
 }
