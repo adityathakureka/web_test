@@ -66,14 +66,17 @@ pipeline {
                     echo 'Deploying application to EC2...'
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
+                            echo "Fixing SSH key permissions..."
+                            echo y | cacls "%SSH_KEY%" /T /C /G %USERNAME%:R
+                            
                             echo "Ensuring remote directory exists..."
-                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p /usr/share/nginx/html/ && sudo rm -rf /usr/share/nginx/html/*"
-
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p /usr/share/nginx/html/ && sudo rm -rf /usr/share/nginx/html/*"
+                            
                             echo "Transferring build files to EC2..."
-                            scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}/build/*" %EC2_USER%@%EC2_HOST%:/usr/share/nginx/html/
-
+                            scp -o StrictHostKeyChecking=no -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:/usr/share/nginx/html/
+                            
                             echo "Restarting the web server..."
-                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl restart nginx"
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl restart nginx || sudo systemctl restart apache2 || pm2 restart all"
                         """
                     }
                 }
@@ -83,7 +86,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment Successful! Your website should be live at http://65.0.122.131/'
+            echo '✅ Deployment Successful!'
         }
         failure {
             echo '❌ Deployment Failed! Check logs for errors.'
