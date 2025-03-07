@@ -55,6 +55,9 @@ pipeline {
                         cd /d "${WORKSPACE_DIR}"
                         rd /s /q build
                         npm run build
+
+                        echo "Checking contents of build directory..."
+                        dir "${WORKSPACE_DIR}\\build"
                     """
                 }
             }
@@ -75,6 +78,9 @@ pipeline {
 
                             echo "Transferring build files to EC2..."
                             scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:/var/www/html/
+
+                            echo "Verifying files on EC2..."
+                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -lah /var/www/html/"
 
                             echo "Restarting the web server..."
                             ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl restart nginx || sudo systemctl restart apache2 || pm2 restart all"
