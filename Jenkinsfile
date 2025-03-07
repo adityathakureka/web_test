@@ -2,11 +2,13 @@ pipeline {
     agent any
 
     environment {
-        EC2_IP = '65.0.122.131'  // Replace with your EC2 Public IP
-        SSH_KEY = 'C:\\Users\\1000684\\.ssh\\testing_key.pem' // Updated path
-        GIT_REPO = 'https://github.com/adityathakureka/web_test.git'
-        REPO_DIR = 'C:\\Jenkins\\workspace\\web_test'
-        GIT_BIN = 'C:\\Users\\1000684\\AppData\\Local\\Programs\\Git\\cmd\\git.exe' // Ensuring Git binary path
+        REPO_URL = 'https://github.com/adityathakureka/web_test.git'
+        REPO_BRANCH = 'main'
+        WORKSPACE_DIR = 'C:\\Jenkins\\workspace\\web_test'
+        BUILD_DIR = "${WORKSPACE_DIR}\\build"
+        EC2_USER = 'ec2-user'
+        EC2_HOST = '65.0.122.131'
+        REMOTE_DIR = '/usr/share/nginx/html'
     }
 
     stages {
@@ -15,11 +17,13 @@ pipeline {
                 script {
                     echo 'Fetching the latest code from GitHub...'
                     bat """
-                    IF EXIST "%REPO_DIR%" (
-                        cd /d "%REPO_DIR%" && call "%GIT_BIN%" reset --hard && call "%GIT_BIN%" pull origin main
-                    ) ELSE (
-                        call "%GIT_BIN%" clone -b main "%GIT_REPO%" "%REPO_DIR%"
-                    )
+                        IF EXIST "${WORKSPACE_DIR}" (
+                            cd /d "${WORKSPACE_DIR}" 
+                            && git reset --hard
+                            && git pull origin ${REPO_BRANCH}
+                        ) ELSE (
+                            git clone -b ${REPO_BRANCH} "${REPO_URL}" "${WORKSPACE_DIR}"
+                        )
                     """
                 }
             }
@@ -30,8 +34,8 @@ pipeline {
                 script {
                     echo 'Installing dependencies...'
                     bat """
-                    cd /d "%REPO_DIR%"
-                    call npm ci
+                        cd /d "${WORKSPACE_DIR}"
+                        && call npm ci
                     """
                 }
             }
@@ -42,8 +46,8 @@ pipeline {
                 script {
                     echo 'Building React app...'
                     bat """
-                    cd /d "%REPO_DIR%"
-                    call npm run build
+                        cd /d "${WORKSPACE_DIR}"
+                        && call npm run build
                     """
                 }
             }
@@ -53,11 +57,13 @@ pipeline {
             steps {
                 script {
                     echo 'Deploying to EC2...'
-                    bat """
-                    ssh -i "%SSH_KEY%" ec2-user@%EC2_IP% "sudo rm -rf /usr/share/nginx/html/*"
-                    scp -i "%SSH_KEY%" -r "%REPO_DIR%\\build\\*" ec2-user@%EC2_IP%:/usr/share/nginx/html
-                    ssh -i "%SSH_KEY%" ec2-user@%EC2_IP% "sudo systemctl restart nginx"
-                    """
+                    withCredentials([sshUserPrivateKey(credentialsId: 'ec2-user', keyFileVariable: 'SSH_KEY')]) {
+                        bat """
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" ${EC2_USER}@${EC2_HOST} "sudo rm -rf ${REMOTE_DIR}/*"
+                            scp -o StrictHostKeyChecking=no -i "%SSH_KEY%" -r ${BUILD_DIR}/* ${EC2_USER}@${EC2_HOST}:${REMOTE_DIR}
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" ${EC2_USER}@${EC2_HOST} "sudo systemctl restart nginx"
+                        """
+                    }
                 }
             }
         }
@@ -65,10 +71,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo '✅ Deployment Successful!'
         }
         failure {
-            echo '❌ Deployment failed! Check logs for errors.'
+            echo '❌ Deployment Failed! Check logs for errors.'
         }
     }
 }
