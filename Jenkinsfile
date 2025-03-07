@@ -6,7 +6,7 @@ pipeline {
         REPO_BRANCH = "main"
         WORKSPACE_DIR = "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\web_test_deploy"
         EC2_USER = "ec2-user"
-        EC2_HOST = "65.0.122.131"
+        EC2_HOST = "13.232.173.152"
         SSH_CREDENTIAL_ID = "ec2-user"
     }
 
