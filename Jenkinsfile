@@ -59,16 +59,14 @@ pipeline {
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
                             echo "Fixing SSH key permissions..."
-                            if exist %SSH_KEY% (
-                                icacls %SSH_KEY% /inheritance:r
-                                icacls %SSH_KEY% /grant:r "%USERNAME%:F"
-                            ) else (
-                                echo "SSH Key not found!"
-                                exit /b 1
-                            )
+                            icacls "%SSH_KEY%" /inheritance:r
+                            icacls "%SSH_KEY%" /grant:r "User:F"
+
+                            echo "Ensuring remote directory exists..."
+                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p /var/www/html/ && sudo chown ec2-user:ec2-user /var/www/html/"
 
                             echo "Transferring build files to EC2..."
-                            scp -i %SSH_KEY% -r ${WORKSPACE_DIR}\\build\\* ${EC2_USER}@${EC2_HOST}:/var/www/html/
+                            scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:/var/www/html/
                         """
                     }
                 }
