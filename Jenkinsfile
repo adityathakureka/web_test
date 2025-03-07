@@ -2,13 +2,12 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = 'https://github.com/adityathakureka/web_test.git'
-        REPO_BRANCH = 'main'
-        WORKSPACE_DIR = 'C:\\Jenkins\\workspace\\web_test'
-        BUILD_DIR = "${WORKSPACE_DIR}\\build"
-        EC2_USER = 'ec2-user'
-        EC2_HOST = '65.0.122.131'
-        REMOTE_DIR = '/usr/share/nginx/html'
+        REPO_URL = "https://github.com/adityathakureka/web_test"
+        REPO_BRANCH = "main"
+        WORKSPACE_DIR = "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\web_test_deploy"
+        EC2_USER = "ec2-user"
+        EC2_HOST = "65.0.122.131"
+        SSH_CREDENTIAL_ID = "ec2-user"
     }
 
     stages {
@@ -18,9 +17,9 @@ pipeline {
                     echo 'Fetching the latest code from GitHub...'
                     bat """
                         IF EXIST "${WORKSPACE_DIR}" (
-                            cd /d "${WORKSPACE_DIR}" 
-                            && git reset --hard
-                            && git pull origin ${REPO_BRANCH}
+                            cd /d "${WORKSPACE_DIR}"
+                            git reset --hard
+                            git pull origin ${REPO_BRANCH}
                         ) ELSE (
                             git clone -b ${REPO_BRANCH} "${REPO_URL}" "${WORKSPACE_DIR}"
                         )
@@ -35,7 +34,7 @@ pipeline {
                     echo 'Installing dependencies...'
                     bat """
                         cd /d "${WORKSPACE_DIR}"
-                        && call npm ci
+                        npm install
                     """
                 }
             }
@@ -44,10 +43,10 @@ pipeline {
         stage('Build React App') {
             steps {
                 script {
-                    echo 'Building React app...'
+                    echo 'Building the React application...'
                     bat """
                         cd /d "${WORKSPACE_DIR}"
-                        && call npm run build
+                        npm run build
                     """
                 }
             }
@@ -56,12 +55,11 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 script {
-                    echo 'Deploying to EC2...'
-                    withCredentials([sshUserPrivateKey(credentialsId: 'ec2-user', keyFileVariable: 'SSH_KEY')]) {
+                    echo 'Deploying application to EC2...'
+                    withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" ${EC2_USER}@${EC2_HOST} "sudo rm -rf ${REMOTE_DIR}/*"
-                            scp -o StrictHostKeyChecking=no -i "%SSH_KEY%" -r ${BUILD_DIR}/* ${EC2_USER}@${EC2_HOST}:${REMOTE_DIR}
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" ${EC2_USER}@${EC2_HOST} "sudo systemctl restart nginx"
+                            echo "Transferring build files to EC2..."
+                            scp -i %SSH_KEY% -r ${WORKSPACE_DIR}\\build\\* ${EC2_USER}@${EC2_HOST}:/var/www/html/
                         """
                     }
                 }
