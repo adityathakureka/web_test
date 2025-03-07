@@ -1,14 +1,14 @@
 pipeline {
     agent any
-    
+
     environment {
         EC2_IP = '65.0.122.131'  // Replace with your EC2 Public IP
-        SSH_KEY = 'C:\\Users\\1000684\\.ssh\\testing_key.pem' // Fixed SSH Key path
+        SSH_KEY = 'C:\\Users\\1000684\\.ssh\\testing_key.pem' // Updated path
         GIT_REPO = 'https://github.com/adityathakureka/web_test.git'
         REPO_DIR = 'C:\\Jenkins\\workspace\\web_test'
-        GIT_CMD = '"C:\\Users\\1000684\\AppData\\Local\\Programs\\Git\\cmd\\git.exe"'
+        GIT_BIN = 'C:\\Users\\1000684\\AppData\\Local\\Programs\\Git\\cmd\\git.exe' // Ensuring Git binary path
     }
-    
+
     stages {
         stage('Clone or Pull Latest Code') {
             steps {
@@ -16,9 +16,9 @@ pipeline {
                     echo 'Fetching the latest code from GitHub...'
                     bat """
                     IF EXIST "%REPO_DIR%" (
-                        cd /d "%REPO_DIR%" ^&^& %GIT_CMD% reset --hard ^&^& %GIT_CMD% pull origin main
+                        cd /d "%REPO_DIR%" && call "%GIT_BIN%" reset --hard && call "%GIT_BIN%" pull origin main
                     ) ELSE (
-                        %GIT_CMD% clone -b main "%GIT_REPO%" "%REPO_DIR%"
+                        call "%GIT_BIN%" clone -b main "%GIT_REPO%" "%REPO_DIR%"
                     )
                     """
                 }
