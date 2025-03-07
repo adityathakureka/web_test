@@ -27,6 +27,9 @@ pipeline {
                             rmdir /s /q "${WORKSPACE_DIR}"
                             git clone -b ${REPO_BRANCH} "${REPO_URL}" "${WORKSPACE_DIR}"
                         )
+
+                        echo "Checking latest commit:"
+                        git log -1
                     """
                 }
             }
@@ -50,6 +53,7 @@ pipeline {
                     echo 'Building the React application...'
                     bat """
                         cd /d "${WORKSPACE_DIR}"
+                        rd /s /q build
                         npm run build
                     """
                 }
@@ -67,10 +71,13 @@ pipeline {
                             icacls "%SSH_KEY%" /grant:r "User:F"
 
                             echo "Ensuring remote directory exists..."
-                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p /var/www/html/ && sudo chown ec2-user:ec2-user /var/www/html/"
+                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p /var/www/html/ && sudo rm -rf /var/www/html/*"
 
                             echo "Transferring build files to EC2..."
                             scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:/var/www/html/
+
+                            echo "Restarting the web server..."
+                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl restart nginx || sudo systemctl restart apache2 || pm2 restart all"
                         """
                     }
                 }
