@@ -58,6 +58,15 @@ pipeline {
                     echo 'Deploying application to EC2...'
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
+                            echo "Fixing SSH key permissions..."
+                            if exist %SSH_KEY% (
+                                icacls %SSH_KEY% /inheritance:r
+                                icacls %SSH_KEY% /grant:r "%USERNAME%:F"
+                            ) else (
+                                echo "SSH Key not found!"
+                                exit /b 1
+                            )
+
                             echo "Transferring build files to EC2..."
                             scp -i %SSH_KEY% -r ${WORKSPACE_DIR}\\build\\* ${EC2_USER}@${EC2_HOST}:/var/www/html/
                         """
