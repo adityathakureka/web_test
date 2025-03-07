@@ -67,16 +67,17 @@ pipeline {
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
                             echo "Fixing SSH key permissions..."
-                            echo y | cacls "%SSH_KEY%" /T /C /G %USERNAME%:R
-                            
+                            icacls "%SSH_KEY%" /inheritance:r
+                            icacls "%SSH_KEY%" /grant:r "User:F"
+
                             echo "Ensuring remote directory exists..."
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p /usr/share/nginx/html/ && sudo rm -rf /usr/share/nginx/html/*"
-                            
+                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p /var/www/html/ && sudo rm -rf /var/www/html/*"
+
                             echo "Transferring build files to EC2..."
-                            scp -o StrictHostKeyChecking=no -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:/usr/share/nginx/html/
-                            
+                            scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:/var/www/html/
+
                             echo "Restarting the web server..."
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl restart nginx || sudo systemctl restart apache2 || pm2 restart all"
+                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl restart nginx || sudo systemctl restart apache2 || pm2 restart all"
                         """
                     }
                 }
