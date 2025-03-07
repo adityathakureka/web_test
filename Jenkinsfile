@@ -16,11 +16,15 @@ pipeline {
                 script {
                     echo 'Fetching the latest code from GitHub...'
                     bat """
-                        IF EXIST "${WORKSPACE_DIR}" (
+                        IF EXIST "${WORKSPACE_DIR}\\.git" (
                             cd /d "${WORKSPACE_DIR}"
-                            git reset --hard
-                            git pull origin ${REPO_BRANCH}
+                            git fetch --all
+                            git reset --hard origin/${REPO_BRANCH}
+                            git clean -fd
+                            git checkout ${REPO_BRANCH}
+                            git pull origin ${REPO_BRANCH} --force
                         ) ELSE (
+                            rmdir /s /q "${WORKSPACE_DIR}"
                             git clone -b ${REPO_BRANCH} "${REPO_URL}" "${WORKSPACE_DIR}"
                         )
                     """
