@@ -2,14 +2,11 @@ pipeline {
     agent any
 
     environment {
-        REPO_URL = "https://github.com/adityathakureka/web_test"
-        REPO_BRANCH = "main"
-        WORKSPACE_DIR = "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\web_test_deploy"
-        EC2_USER = "ec2-user"
-        EC2_HOST = "13.233.151.39"
-        SSH_CREDENTIAL_ID = "ec2-user"
-        REMOTE_DEPLOY_DIR = "/var/www/html"
-        GIT_PATH = "C:\\Users\\1000684\\AppData\\Local\\Programs\\Git\\cmd\\git.exe"
+        SSH_CREDENTIAL_ID = 'your-jenkins-ssh-credential-id'  // Replace with your Jenkins SSH credential ID
+        EC2_USER = 'ec2-user'
+        EC2_HOST = 'your-ec2-instance-ip'  // Replace with your EC2 instance public IP
+        REMOTE_DEPLOY_DIR = '/var/www/html'  // Change if your project deploys elsewhere
+        WORKSPACE_DIR = "${WORKSPACE}"
     }
 
     stages {
@@ -19,17 +16,16 @@ pipeline {
                     echo 'Fetching latest code from GitHub...'
                     bat """
                         IF EXIST "${WORKSPACE_DIR}\\.git" (
-                            cd /d "${WORKSPACE_DIR}"
-                            "${GIT_PATH}" fetch --all
-                            "${GIT_PATH}" reset --hard origin/${REPO_BRANCH}
-                            "${GIT_PATH}" clean -fd
-                            "${GIT_PATH}" checkout ${REPO_BRANCH}
-                            "${GIT_PATH}" pull origin ${REPO_BRANCH} --force
+                            cd /d "${WORKSPACE_DIR}"  
+                            git fetch --all  
+                            git reset --hard origin/main  
+                            git clean -fd  
+                            git checkout main  
+                            git pull origin main --force 
                         ) ELSE (
-                            rmdir /s /q "${WORKSPACE_DIR}"
-                            "${GIT_PATH}" clone -b ${REPO_BRANCH} "${REPO_URL}" "${WORKSPACE_DIR}"
+                            rmdir /s /q "${WORKSPACE_DIR}"  
+                            git clone -b main "https://github.com/adityathakureka/web_test" "${WORKSPACE_DIR}" 
                         )
-                        "${GIT_PATH}" log -1
                     """
                 }
             }
@@ -70,28 +66,28 @@ pipeline {
                             icacls "%SSH_KEY%" /inheritance:r
                             icacls "%SSH_KEY%" /grant:r "%USERNAME%:F"
 
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "
-                                sudo chown -R ec2-user:ec2-user ${REMOTE_DEPLOY_DIR} &&
-                                sudo chmod -R 755 ${REMOTE_DEPLOY_DIR}
-                            "
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% ^
+                                "sudo chown -R ec2-user:ec2-user ${REMOTE_DEPLOY_DIR} && sudo chmod -R 755 ${REMOTE_DEPLOY_DIR}"
 
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% ^
+                                "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
+
                             scp -o StrictHostKeyChecking=no -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:${REMOTE_DEPLOY_DIR}/
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -lah ${REMOTE_DEPLOY_DIR}/"
 
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "
-                                if id nginx >/dev/null 2>&1; then 
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% ^
+                                "ls -lah ${REMOTE_DEPLOY_DIR}/"
+
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% ^
+                                "if id nginx >/dev/null 2>&1; then 
                                     sudo chown -R nginx:nginx ${REMOTE_DEPLOY_DIR}/;
                                 else 
                                     echo 'Nginx user not found, skipping chown';
-                                fi
-                            "
+                                fi"
 
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "
-                                sudo systemctl restart nginx >/dev/null || 
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% ^
+                                "sudo systemctl restart nginx >/dev/null || 
                                 pm2 restart all 2>/dev/null || 
-                                echo 'No recognized web service found!'
-                            "
+                                echo 'No recognized web service found!'"
                         """
                     }
                 }
@@ -101,7 +97,7 @@ pipeline {
         stage('Check Server IP') {
             steps {
                 script {
-                    echo 'Checking Public IP of EC2 Instance...'
+                    echo 'Checking deployed server IP...'
                     bat """
                         ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "curl -s ifconfig.me"
                     """
@@ -112,7 +108,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment Successful!'
+            echo '✅ Deployment successful!'
         }
         failure {
             echo '❌ Deployment Failed! Check logs for errors.'
