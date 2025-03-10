@@ -70,6 +70,11 @@ pipeline {
                             icacls "%SSH_KEY%" /inheritance:r
                             icacls "%SSH_KEY%" /grant:r "%USERNAME%:F"
 
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "
+                                sudo chown -R ec2-user:ec2-user ${REMOTE_DEPLOY_DIR} &&
+                                sudo chmod -R 755 ${REMOTE_DEPLOY_DIR}
+                            "
+
                             ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
                             scp -o StrictHostKeyChecking=no -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:${REMOTE_DEPLOY_DIR}/
                             ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -lah ${REMOTE_DEPLOY_DIR}/"
