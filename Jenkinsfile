@@ -65,12 +65,20 @@ pipeline {
                     echo 'Deploying application to EC2...'
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
+                            takeown /F "%SSH_KEY%"
                             icacls "%SSH_KEY%" /inheritance:r
-                            icacls "%SSH_KEY%" /grant:r "User:F"
+                            icacls "%SSH_KEY%" /grant:r "%USERNAME%:F"
+
                             ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
                             scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:${REMOTE_DEPLOY_DIR}/
                             ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -lah ${REMOTE_DEPLOY_DIR}/"
-                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl restart nginx || sudo systemctl restart apache2 || pm2 restart all"
+
+                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "
+                                sudo systemctl restart nginx 2>/dev/null || 
+                                sudo systemctl restart apache2 2>/dev/null || 
+                                pm2 restart all 2>/dev/null || 
+                                echo 'No recognized web service found!'
+                            "
                         """
                     }
                 }
