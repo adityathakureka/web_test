@@ -12,10 +12,6 @@ pipeline {
         GIT_PATH = "C:\\Users\\1000684\\AppData\\Local\\Programs\\Git\\cmd\\git.exe"
     }
 
-    tools {
-        git 'git'
-    }
-
     stages {
         stage('Clone Repository') {
             steps {
