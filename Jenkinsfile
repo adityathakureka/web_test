@@ -8,13 +8,14 @@ pipeline {
         EC2_USER = "ec2-user"
         EC2_HOST = "13.201.77.207"
         SSH_CREDENTIAL_ID = "ec2-user"
+        REMOTE_DEPLOY_DIR = "/var/www/html"
     }
 
     stages {
-        stage('Clone or Pull Latest Code') {
+        stage('Clone Repository') {
             steps {
                 script {
-                    echo 'Fetching the latest code from GitHub...'
+                    echo 'Fetching latest code from GitHub...'
                     bat """
                         IF EXIST "${WORKSPACE_DIR}\\.git" (
                             cd /d "${WORKSPACE_DIR}"
@@ -27,8 +28,6 @@ pipeline {
                             rmdir /s /q "${WORKSPACE_DIR}"
                             git clone -b ${REPO_BRANCH} "${REPO_URL}" "${WORKSPACE_DIR}"
                         )
-
-                        echo "Checking latest commit:"
                         git log -1
                     """
                 }
@@ -38,10 +37,10 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    echo 'Installing dependencies...'
+                    echo 'Installing project dependencies...'
                     bat """
                         cd /d "${WORKSPACE_DIR}"
-                        npm install
+                        npm install --legacy-peer-deps
                     """
                 }
             }
@@ -50,14 +49,11 @@ pipeline {
         stage('Build React App') {
             steps {
                 script {
-                    echo 'Building the React application...'
+                    echo 'Building React application...'
                     bat """
                         cd /d "${WORKSPACE_DIR}"
                         rd /s /q build
                         npm run build
-
-                        echo "Checking contents of build directory..."
-                        dir "${WORKSPACE_DIR}\\build"
                     """
                 }
             }
@@ -69,20 +65,11 @@ pipeline {
                     echo 'Deploying application to EC2...'
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
-                            echo "Fixing SSH key permissions..."
                             icacls "%SSH_KEY%" /inheritance:r
                             icacls "%SSH_KEY%" /grant:r "User:F"
-
-                            echo "Ensuring remote directory exists..."
-                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p /var/www/html/ && sudo rm -rf /var/www/html/*"
-
-                            echo "Transferring build files to EC2..."
-                            scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:/var/www/html/
-
-                            echo "Verifying files on EC2..."
-                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -lah /var/www/html/"
-
-                            echo "Restarting the web server..."
+                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
+                            scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:${REMOTE_DEPLOY_DIR}/
+                            ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -lah ${REMOTE_DEPLOY_DIR}/"
                             ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl restart nginx || sudo systemctl restart apache2 || pm2 restart all"
                         """
                     }
