@@ -4,7 +4,7 @@ pipeline {
     environment {
         REPO_URL = "https://github.com/adityathakureka/web_test"
         REPO_BRANCH = "main"
-        WORKSPACE_DIR = "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\web_test_deploy"
+        WORKSPACE_DIR = "C:\\\\ProgramData\\\\Jenkins\\\\.jenkins\\\\workspace\\\\web_test_deploy"
         EC2_USER = "ec2-user"
         EC2_HOST = "13.233.151.39"
         SSH_CREDENTIAL_ID = "ec2-user"
@@ -17,7 +17,7 @@ pipeline {
                 script {
                     echo 'Fetching latest code from GitHub...'
                     bat """
-                        IF EXIST "${WORKSPACE_DIR}\.git" (
+                        IF EXIST "${WORKSPACE_DIR}\\\\.git" (
                             cd /d "${WORKSPACE_DIR}"
                             git fetch --all
                             git reset --hard origin/${REPO_BRANCH}
@@ -70,7 +70,7 @@ pipeline {
                             icacls "%SSH_KEY%" /grant:r "%USERNAME%:F"
 
                             ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
-                            scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:${REMOTE_DEPLOY_DIR}/
+                            scp -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\\\build\\\\*" %EC2_USER%@%EC2_HOST%:${REMOTE_DEPLOY_DIR}/
                             ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -lah ${REMOTE_DEPLOY_DIR}/"
 
                             ssh -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "
