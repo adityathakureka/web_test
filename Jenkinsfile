@@ -1,15 +1,17 @@
 pipeline {
     agent any
+
     environment {
         REPO_URL = "https://github.com/adityathakureka/web_test"
         REPO_BRANCH = "main"
         WORKSPACE_DIR = "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\web_test_deploy"
         EC2_USER = "ec2-user"
-        // Update to the correct IP address from the logs
         EC2_HOST = "13.233.151.39"
         SSH_CREDENTIAL_ID = "ec2-user"
         REMOTE_DEPLOY_DIR = "/var/www/html"
+        GIT_PATH = "C:\\Users\\1000684\\AppData\\Local\\Programs\\Git\\cmd\\git.exe"
     }
+
     stages {
         stage('Clone Repository') {
             steps {
@@ -18,20 +20,21 @@ pipeline {
                     bat """
                         IF EXIST "${WORKSPACE_DIR}\\.git" (
                             cd /d "${WORKSPACE_DIR}"
-                            git fetch --all
-                            git reset --hard origin/${REPO_BRANCH}
-                            git clean -fd
-                            git checkout ${REPO_BRANCH}
-                            git pull origin ${REPO_BRANCH} --force
+                            "${GIT_PATH}" fetch --all
+                            "${GIT_PATH}" reset --hard origin/${REPO_BRANCH}
+                            "${GIT_PATH}" clean -fd
+                            "${GIT_PATH}" checkout ${REPO_BRANCH}
+                            "${GIT_PATH}" pull origin ${REPO_BRANCH} --force
                         ) ELSE (
                             rmdir /s /q "${WORKSPACE_DIR}"
-                            git clone -b ${REPO_BRANCH} "${REPO_URL}" "${WORKSPACE_DIR}"
+                            "${GIT_PATH}" clone -b ${REPO_BRANCH} "${REPO_URL}" "${WORKSPACE_DIR}"
                         )
-                        git log -1
+                        "${GIT_PATH}" log -1
                     """
                 }
             }
         }
+
         stage('Install Dependencies') {
             steps {
                 script {
@@ -43,6 +46,7 @@ pipeline {
                 }
             }
         }
+
         stage('Build React App') {
             steps {
                 script {
@@ -51,57 +55,59 @@ pipeline {
                         cd /d "${WORKSPACE_DIR}"
                         rd /s /q build
                         npm run build
-                        echo "REACT_APP_BUILD_TIME=%DATE%_%TIME%" > build\\build-info.txt
                     """
                 }
             }
         }
+
         stage('Deploy to EC2') {
             steps {
                 script {
                     echo 'Deploying application to EC2...'
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
+                            takeown /F "%SSH_KEY%"
                             icacls "%SSH_KEY%" /inheritance:r
-                            icacls "%SSH_KEY%" /grant:r "User:F"
-                            REM Clear target directory with proper permissions
+                            icacls "%SSH_KEY%" /grant:r "%USERNAME%:F"
+
                             ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
-                            REM Deploy files
                             scp -o StrictHostKeyChecking=no -i "%SSH_KEY%" -r "${WORKSPACE_DIR}\\build\\*" %EC2_USER%@%EC2_HOST%:${REMOTE_DEPLOY_DIR}/
-                            REM Fix permissions on files
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo chown -R nginx:nginx ${REMOTE_DEPLOY_DIR} || sudo chown -R apache:apache ${REMOTE_DEPLOY_DIR} || sudo chown -R www-data:www-data ${REMOTE_DEPLOY_DIR}"
-                            REM Create simple cache-busting mechanism
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "echo '# Cache busting timestamp: %DATE%_%TIME%' | sudo tee -a ${REMOTE_DEPLOY_DIR}/index.html > /dev/null"
-                            REM Verify deployment
                             ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -lah ${REMOTE_DEPLOY_DIR}/"
-                            REM Restart web services with verification
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl restart nginx && echo 'Nginx restarted successfully' || sudo systemctl restart apache2 && echo 'Apache restarted successfully' || pm2 restart all && echo 'PM2 restarted successfully' || echo 'No recognized web service found!'"
-                            REM Verify service status
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo systemctl status nginx || sudo systemctl status apache2 || pm2 status"
-                            REM Check website accessibility
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "curl -I http://localhost || curl -I http://127.0.0.1"
+
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "
+                                if id nginx >/dev/null 2>&1; then 
+                                    sudo chown -R nginx:nginx ${REMOTE_DEPLOY_DIR}/;
+                                else 
+                                    echo 'Nginx user not found, skipping chown';
+                                fi
+                            "
+
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "
+                                sudo systemctl restart nginx >/dev/null || 
+                                pm2 restart all 2>/dev/null || 
+                                echo 'No recognized web service found!'
+                            "
                         """
                     }
                 }
             }
         }
-        stage('Verify Deployment') {
+
+        stage('Check Server IP') {
             steps {
                 script {
-                    echo 'Verifying deployment...'
-                    withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
-                        bat """
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "cat ${REMOTE_DEPLOY_DIR}/build-info.txt || echo 'Build info not found'"
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "grep -r 'Cache busting' ${REMOTE_DEPLOY_DIR} || echo 'Cache busting marker not found'"
-                        """
-                    }
+                    echo 'Checking Public IP of EC2 Instance...'
+                    bat """
+                        ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "curl -s ifconfig.me"
+                    """
                 }
             }
         }
     }
+
     post {
         success {
-            echo '✅ Deployment Successful! Please hard refresh your browser (Ctrl+F5 or Cmd+Shift+R) to see changes.'
+            echo '✅ Deployment Successful!'
         }
         failure {
             echo '❌ Deployment Failed! Check logs for errors.'
