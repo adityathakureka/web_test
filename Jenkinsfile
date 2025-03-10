@@ -75,8 +75,8 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -lah ${REMOTE_DEPLOY_DIR}/"
 
                             ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "
-                                sudo systemctl restart nginx 2>/dev/null || 
-                                sudo systemctl restart apache2 2>/dev/null || 
+                                sudo systemctl restart nginx >/dev/null || 
+                                sudo systemctl restart apache2 >/dev/null || 
                                 pm2 restart all 2>/dev/null || 
                                 echo 'No recognized web service found!'
                             "
