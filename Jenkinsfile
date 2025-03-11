@@ -15,7 +15,7 @@ pipeline {
                 script {
                     echo 'Fetching latest code from GitHub...'
                     bat """
-                        IF EXIST "${WORKSPACE_DIR}\.git" (
+                        IF EXIST "${WORKSPACE_DIR}\\\\.git" (
                             cd /d "${WORKSPACE_DIR}"  
                             git fetch --all  
                             git reset --hard origin/main  
