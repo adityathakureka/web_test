@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SSH_CREDENTIAL_ID = 'ec2-ssh-key'   // Corrected SSH credentials ID
+        SSH_KEY_PATH = 'C:/ProgramData/Jenkins/ssh_key/testing_key.pem'
         EC2_USER = 'ec2-user'
         EC2_HOST = '13.233.151.39'
         REMOTE_DEPLOY_DIR = '/var/www/html'
@@ -15,7 +15,7 @@ pipeline {
                 script {
                     echo 'Fetching latest code from GitHub...'
                     bat """
-                        IF EXIST "${WORKSPACE_DIR}\\\\.git" (
+                        IF EXIST "${WORKSPACE_DIR}\\.git" (
                             cd /d "${WORKSPACE_DIR}"  
                             git fetch --all  
                             git reset --hard origin/main  
@@ -60,17 +60,15 @@ pipeline {
             steps {
                 script {
                     echo 'Deploying application to EC2...'
-                    withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
-                        bat """
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
+                    bat """
+                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY_PATH}" ${EC2_USER}@${EC2_HOST} "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
 
-                            scp -o StrictHostKeyChecking=no -i "%SSH_KEY%" -r "${WORKSPACE_DIR}/build/*" %EC2_USER%@%EC2_HOST%:${REMOTE_DEPLOY_DIR}/
+                        scp -o StrictHostKeyChecking=no -i "${SSH_KEY_PATH}" -r "${WORKSPACE_DIR}/build/*" ${EC2_USER}@${EC2_HOST}:${REMOTE_DEPLOY_DIR}/
 
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "if id nginx >/dev/null 2>&1; then sudo chown -R nginx:nginx ${REMOTE_DEPLOY_DIR}/; else echo 'Nginx user not found, skipping chown'; fi"
+                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY_PATH}" ${EC2_USER}@${EC2_HOST} "if id nginx >/dev/null 2>&1; then sudo chown -R nginx:nginx ${REMOTE_DEPLOY_DIR}/; else echo 'Nginx user not found, skipping chown'; fi"
 
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "if systemctl list-units --type=service | grep nginx; then sudo systemctl restart nginx; elif command -v pm2 >/dev/null 2>&1; then pm2 restart all; else echo 'No recognized web service found!'; fi"
-                        """
-                    }
+                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY_PATH}" ${EC2_USER}@${EC2_HOST} "if systemctl list-units --type=service | grep nginx; then sudo systemctl restart nginx; elif command -v pm2 >/dev/null 2>&1; then pm2 restart all; else echo 'No recognized web service found!'; fi"
+                    """
                 }
             }
         }
@@ -79,11 +77,9 @@ pipeline {
             steps {
                 script {
                     echo 'Checking deployed server IP...'
-                    withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
-                        bat """
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "ls -la ${REMOTE_DEPLOY_DIR}"
-                        """
-                    }
+                    bat """
+                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY_PATH}" ${EC2_USER}@${EC2_HOST} "ls -la ${REMOTE_DEPLOY_DIR}"
+                    """
                 }
             }
         }
