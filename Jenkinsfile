@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SSH_CREDENTIAL_ID = 'ec2-user'   // Corrected SSH credentials ID
+        SSH_CREDENTIAL_ID = 'ec2-ssh-key'   // Corrected SSH credentials ID
         EC2_USER = 'ec2-user'
         EC2_HOST = '13.233.151.39'
         REMOTE_DEPLOY_DIR = '/var/www/html'
