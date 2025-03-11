@@ -85,7 +85,7 @@ pipeline {
                     echo 'Checking deployed server IP...'
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
-                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "curl -s ifconfig.me"
+                            ssh -o StrictHostKeyChecking=no -i "****" ec2-user@13.233.151.39 "sudo mkdir -p /var/www/html && sudo rm -rf /var/www/html/* && sudo chown -R ec2-user:ec2-user /var/www/html && sudo chmod -R 775 /var/www/html"
                         """
                     }
                 }
