@@ -15,7 +15,7 @@ pipeline {
                 script {
                     echo 'Fetching latest code from GitHub...'
                     bat """
-                        IF EXIST "${WORKSPACE_DIR}\\.git" (
+                        IF EXIST "${WORKSPACE_DIR}\.git" (
                             cd /d "${WORKSPACE_DIR}"  
                             git fetch --all  
                             git reset --hard origin/main  
@@ -62,7 +62,9 @@ pipeline {
                     echo 'Deploying application to EC2...'
                     withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
                         bat """
+                            takeown /F "%SSH_KEY%"
                             icacls "%SSH_KEY%" /inheritance:r /grant:r "%USERNAME%:F"
+                            icacls "%SSH_KEY%" /grant:r "%USERNAME%:F"
 
                             ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "sudo mkdir -p ${REMOTE_DEPLOY_DIR} && sudo rm -rf ${REMOTE_DEPLOY_DIR}/*"
 
@@ -81,9 +83,11 @@ pipeline {
             steps {
                 script {
                     echo 'Checking deployed server IP...'
-                    bat """
-                        ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "curl -s ifconfig.me"
-                    """
+                    withCredentials([sshUserPrivateKey(credentialsId: SSH_CREDENTIAL_ID, keyFileVariable: 'SSH_KEY')]) {
+                        bat """
+                            ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %EC2_USER%@%EC2_HOST% "curl -s ifconfig.me"
+                        """
+                    }
                 }
             }
         }
