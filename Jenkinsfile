@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SSH_CREDENTIAL_ID = 'admin'  // Replace with your Jenkins SSH credential ID
+        SSH_CREDENTIAL_ID = 'ec2-user'  // Replace with your Jenkins SSH credential ID
         EC2_USER = 'ec2-user'
         EC2_HOST = '13.233.151.39'  // Replace with your EC2 instance public IP
         REMOTE_DEPLOY_DIR = '/var/www/html'  // Change if your project deploys elsewhere
