@@ -18,8 +18,9 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install Dependencies
-        run: npm install --legacy-peer-deps
+      - name: Install dependencies
+        run: powershell -ExecutionPolicy Bypass -File npm install --legacy-peer-deps
+
 
       - name: Build React App
         run: npm run build
