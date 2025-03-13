@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted  # Use the local runner
+    runs-on: self-hosted  # Use your local runner
 
     steps:
       - name: Checkout Code
@@ -20,11 +20,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
-        shell: cmd  # Ensures compatibility
+        shell: cmd  # Force it to run in cmd.exe, not PowerShell
 
       - name: Build React App
         run: npm run build
-        shell: cmd
+        shell: cmd  # Same here
 
       - name: Deploy Locally (Windows)
         run: |
