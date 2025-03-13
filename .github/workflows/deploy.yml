@@ -19,14 +19,16 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        run: powershell -ExecutionPolicy Bypass -File npm install --legacy-peer-deps
-
+        run: npm install --legacy-peer-deps
+        shell: cmd  # Ensures compatibility
 
       - name: Build React App
         run: npm run build
+        shell: cmd
 
-      - name: Deploy Locally
+      - name: Deploy Locally (Windows)
         run: |
-          rm -rf /var/www/html/*
-          cp -r build/* /var/www/html/
-          echo "Deployment complete!"
+          Remove-Item -Recurse -Force "C:\inetpub\wwwroot\*"
+          Copy-Item -Path "build\*" -Destination "C:\inetpub\wwwroot\" -Recurse -Force
+          Write-Output "Deployment complete!"
+        shell: powershell
