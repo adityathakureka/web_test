@@ -32,3 +32,4 @@ jobs:
           Copy-Item -Path "build\*" -Destination "C:\inetpub\wwwroot\" -Recurse -Force
           Write-Output "Deployment complete!"
         shell: powershell
+        
